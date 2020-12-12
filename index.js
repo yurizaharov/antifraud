@@ -7,7 +7,13 @@ const userScheme = new Schema({
     ip: String
 });
 const User = mongoose.model("User", userScheme);
-mongoose.connect("mongodb://192.168.4.197:27017/usersdb");
+
+var mongoUri = "mongodb://" + process.env.MONGO_ADDR + "/" + process.env.MONGO_DBS;
+console.log("MongoDB address set to:", mongoUri);
+var mobileBack = process.env.MOBILEBACK;
+console.log("This instance mobileback is:", mobileBack);
+
+mongoose.connect(mongoUri);
 
 var proxy = httpProxy.createProxyServer({});
 
@@ -30,7 +36,7 @@ var server = http.createServer(function(req, res) {
                     console.log(Date.now(), "Объект сохранен:", user.ip);
                 });
             }
-        proxy.web(req, res, { target: 'http://192.168.4.138:8880' });
+        proxy.web(req, res, { target: mobileBack });
         });
     }
 
@@ -51,7 +57,7 @@ var server = http.createServer(function(req, res) {
                     console.log(Date.now(), "Объект сохранен:", user.ip);
                 });
             }
-            proxy.web(req, res, {target: 'http://192.168.4.138:8880'});
+            proxy.web(req, res, {target: mobileBack});
         });
     }
 
@@ -63,7 +69,7 @@ var server = http.createServer(function(req, res) {
             try {
                 let user = doc.ip
                 console.log(Date.now(), "Объект найден:", user);
-                proxy.web(req, res, {target: 'http://192.168.4.138:8880'});
+                proxy.web(req, res, {target: mobileBack});
             } catch (e) {
                 console.log(e);
                 res.writeHead(401);
