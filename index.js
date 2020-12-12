@@ -12,13 +12,10 @@ mongoose.connect("mongodb://192.168.4.197:27017/usersdb");
 var proxy = httpProxy.createProxyServer({});
 
 var server = http.createServer(function(req, res) {
-    let timeStamp = Date.now()
-    let xRealIp = req.headers['x-real-ip']
-    let destUrl = req.url
-    console.log(`${timeStamp} - ${xRealIp} - ${destUrl}`)
 
     var newsUrl = '\/mobile\/rest\/points\/news\/';
     if (newsUrl.includes(req.url)) {
+        console.log(Date.now(), '-', req.headers['x-real-ip'], '-', req.url)
         User.findOne({ip: req.headers['x-real-ip']}, function(err, doc){
             if(err) return console.log(err);
             try {
@@ -39,6 +36,7 @@ var server = http.createServer(function(req, res) {
 
     var addrUrl = '\/mobile\/rest\/addresses\/';
     if (addrUrl.includes(req.url)) {
+        console.log(Date.now(), '-', req.headers['x-real-ip'], '-', req.url)
         User.findOne({ip: req.headers['x-real-ip']}, function (err, doc) {
             if (err) return console.log(err);
             try {
@@ -59,6 +57,7 @@ var server = http.createServer(function(req, res) {
 
     var tokenUrl = req.url;
     if (tokenUrl.match('\/mobile\/rest\/phones\/(\\d+)\/token')) {
+        console.log(Date.now(), '-', req.headers['x-real-ip'], '-', req.url)
         User.findOne({ip: req.headers['x-real-ip']}, function (err, doc) {
             if (err) return console.log(err);
             try {
@@ -72,6 +71,13 @@ var server = http.createServer(function(req, res) {
             }
         });
     }
+
+    if ( req.url === '\/healthcheck\/' ){
+        res.writeHead(200);
+        res.write( 'health: ok\n' );
+        res.end();
+    }
+
 });
 
 console.log("listening on port 5050")
