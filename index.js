@@ -8,10 +8,13 @@ const userScheme = new Schema({
 });
 const User = mongoose.model("User", userScheme);
 
-var mongoUri = "mongodb://" + process.env.MONGO_ADDR + "/" + process.env.MONGO_DBS;
+// Setting instance parameters
+const mongoUri = "mongodb://" + process.env.MONGO_ADDR + "/" + process.env.MONGO_DBS;
 console.log("MongoDB address set to:", mongoUri);
-var mobileBack = process.env.MOBILEBACK;
-console.log("This instance mobileback is:", mobileBack);
+const mobileBack = process.env.MOBILE_BACK;
+console.log("Mobileback for this instance  is:", mobileBack);
+const mobileContext = process.env.MOBILE_CONTEXT;
+console.log("Mobile context of this instance is:", mobileContext);
 
 mongoose.connect(mongoUri);
 
@@ -19,7 +22,7 @@ var proxy = httpProxy.createProxyServer({});
 
 var server = http.createServer(function(req, res) {
 
-    var newsUrl = '\/mobile\/rest\/points\/news\/';
+    var newsUrl = '\/' + mobileContext +'\/rest\/points\/news\/';
     if (newsUrl.includes(req.url)) {
         console.log(Date.now(), '-', req.headers['x-real-ip'], '-', req.url)
         User.findOne({ip: req.headers['x-real-ip']}, function(err, doc){
@@ -40,7 +43,7 @@ var server = http.createServer(function(req, res) {
         });
     }
 
-    var addrUrl = '\/mobile\/rest\/addresses\/';
+    var addrUrl = '\/' + mobileContext +'\/rest\/addresses\/';
     if (addrUrl.includes(req.url)) {
         console.log(Date.now(), '-', req.headers['x-real-ip'], '-', req.url)
         User.findOne({ip: req.headers['x-real-ip']}, function (err, doc) {
@@ -62,7 +65,7 @@ var server = http.createServer(function(req, res) {
     }
 
     var tokenUrl = req.url;
-    if (tokenUrl.match('\/mobile\/rest\/phones\/(\\d+)\/token')) {
+    if (tokenUrl.match('\/' + mobileContext +'\/rest\/phones\/(\\d+)\/token')) {
         console.log(Date.now(), '-', req.headers['x-real-ip'], '-', req.url)
         User.findOne({ip: req.headers['x-real-ip']}, function (err, doc) {
             if (err) return console.log(err);
@@ -72,7 +75,7 @@ var server = http.createServer(function(req, res) {
                 proxy.web(req, res, {target: mobileBack});
             } catch (e) {
                 console.log(e);
-                res.writeHead(401);
+                res.writeHead(503);
                 res.end();
             }
         });
@@ -80,7 +83,7 @@ var server = http.createServer(function(req, res) {
 
     if ( req.url === '\/healthcheck\/' ){
         res.writeHead(200);
-        res.write( 'health: ok\n' );
+        res.write(JSON.stringify({health: 'ok'}));
         res.end();
     }
 
