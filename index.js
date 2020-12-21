@@ -36,17 +36,18 @@ var server = http.createServer(function(req, res) {
     var newsUrl = '\/' + mobileContext +'\/rest\/points\/news\/';
     if (newsUrl.includes(req.url)) {
         console.log(timeStamp, '-', req.headers['x-real-ip'], '-', req.url)
-        User.findOne({ ip: req.headers['x-real-ip'] }, function(err, doc){
+        User.findOne({ ip: req.headers['x-real-ip'] }, function (err, doc){
             if(err) return console.log(err);
             if(!doc) {
                 let user = new User({
                     ip: req.headers['x-real-ip']
                 })
-                user.save(function(){
-                    console.log(timeStamp, "IP address saved:", req.headers['x-real-ip']);
+                user.save(function (err){
+                    if(err) return console.log(err);
+                    console.log(timeStamp, "Saved IP address:", req.headers['x-real-ip']);
                 });
             } else {
-                console.log(timeStamp, "IP address found:", doc.ip);
+                console.log(timeStamp, "Found IP address:", doc.ip);
             }
             proxy.web(req, res, { target: mobileBack }, function(e) {
                 console.log(e)
@@ -58,16 +59,17 @@ var server = http.createServer(function(req, res) {
     if (addrUrl.includes(req.url)) {
         console.log(timeStamp, '-', req.headers['x-real-ip'], '-', req.url)
         User.findOne({ ip: req.headers['x-real-ip'] }, function (err, doc) {
-            if (err) return console.log(err);
+            if(err) return console.log(err);
             if(!doc) {
                 let user = new User({
                     ip: req.headers['x-real-ip']
                 })
-                user.save(function () {
-                    console.log(timeStamp, "IP address saved:", req.headers['x-real-ip']);
+                user.save(function (err) {
+                    if(err) return console.log(err);
+                    console.log(timeStamp, "Saved IP address:", req.headers['x-real-ip']);
                 });
             } else {
-                console.log(timeStamp, "IP address found:", doc.ip);
+                console.log(timeStamp, "Found IP address:", doc.ip);
             }
             proxy.web(req, res, { target: mobileBack }, function(e) {
                 console.log(e)
@@ -79,45 +81,47 @@ var server = http.createServer(function(req, res) {
     if (tokenUrl.match('\/' + mobileContext +'\/rest\/phones\/(\\d+)\/token')) {
         console.log(timeStamp, '-', req.headers['x-real-ip'], '-', req.url)
 
-        var arrayOfStrings = req.url.split("/");
-        var phoneNumber = arrayOfStrings[4]
+        var arrayOfParts = req.url.split("/");
+        var phoneNumber = arrayOfParts[4]
 
-        User.findOne({ip: req.headers['x-real-ip']}, function (err, doc) {
-            if (err) return console.log(err);
-            try {
-                let user = doc.ip;
-                console.log(timeStamp, "Объект найден:", user);
-
-                Phone.findOne({phone: phoneNumber}, function (err, rec) {
-                    if (err) return console.log(err);
-                    try {
-                        let phone = rec.phone;
-                        if ((timeStamp - rec.timestamp) < smsAllowInterval*60*1000) {
-                            console.log(timeStamp, "Слишком частый запрос, прошло", timeStamp - rec.timestamp, "мсек. Номер:", phoneNumber);
-                            res.writeHead(503);
-                            res.end();
-                        } else {
-                            Phone.updateMany({phone: phoneNumber}, {timestamp: timeStamp}, function(err, result){
-                                if(err) return console.log(err);
-                                console.log(timeStamp, "Номер обновлен:", phoneNumber);
-                            });
-                            proxy.web(req, res, {target: mobileBack});
-                        }
-                    } catch (e) {
+        User.findOne({ ip: req.headers['x-real-ip'] }, function (err, doc) {
+            if(err) return console.log(err);
+            if (!doc) {
+                console.log(timeStamp, "IP address not found:", req.headers['x-real-ip']);
+                res.writeHead(503);
+                res.end();
+            } else {
+                console.log(timeStamp, "Found IP address:", doc.ip);
+                Phone.findOne({ phone: phoneNumber }, function (err, rec) {
+                    if(err) return console.log(err);
+                    if(!rec) {
                         let phone = new Phone({
                             phone: phoneNumber,
                             timestamp: timeStamp
                         })
-                        phone.save(function(err){
-                            console.log(timeStamp, "Номер сохранен:", phone.phone);
-                            proxy.web(req, res, {target: mobileBack});
+                        phone.save(function (err) {
+                            if(err) return console.log(err);
+                            console.log(timeStamp, "Saved phone number:", phoneNumber);
                         });
+                        proxy.web(req, res, { target: mobileBack }, function(e) {
+                            console.log(e)
+                        });
+                    } else {
+                        if ((timeStamp - rec.timestamp) < smsAllowInterval*60*1000) {
+                            console.log(timeStamp, "Too frequently request:", timeStamp - rec.timestamp, "msec. Phone number:", phoneNumber);
+                            res.writeHead(503);
+                            res.end();
+                        } else {
+                            Phone.updateMany({ phone: phoneNumber }, { timestamp: timeStamp }, function(err){
+                                if(err) return console.log(err);
+                                console.log(timeStamp, "Phone number renewed:", phoneNumber);
+                            });
+                            proxy.web(req, res, { target: mobileBack }, function(e) {
+                                console.log(e)
+                            });
+                        }
                     }
-                });
-            } catch (e) {
-                console.log(e);
-                res.writeHead(503);
-                res.end();
+                })
             }
         });
     }
