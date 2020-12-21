@@ -1,4 +1,4 @@
-var http = require('http'),
+const http = require('http'),
     httpProxy = require('http-proxy');
 
 const mongoose = require("mongoose");
@@ -24,7 +24,7 @@ console.log("Mobileback for this instance  is:", mobileBack);
 const mobileContext = process.env.MOBILE_CONTEXT;
 console.log("Mobile context of this instance is:", mobileContext);
 const smsAllowInterval = process.env.SMS_ALLOW_INTERVAL;
-console.log("Iinterval between sending messages is set to:", smsAllowInterval, "min");
+console.log("Interval between sending messages is set to:", smsAllowInterval, "min");
 
 mongoose.connect(mongoUri);
 
@@ -36,42 +36,42 @@ var server = http.createServer(function(req, res) {
     var newsUrl = '\/' + mobileContext +'\/rest\/points\/news\/';
     if (newsUrl.includes(req.url)) {
         console.log(timeStamp, '-', req.headers['x-real-ip'], '-', req.url)
-        User.findOne({ip: req.headers['x-real-ip']}, function(err, doc){
+        User.findOne({ ip: req.headers['x-real-ip'] }, function(err, doc){
             if(err) return console.log(err);
-            try {
-                let user = doc.ip
-                console.log(timeStamp, "Объект найден:", user);
-            } catch (e) {
-            console.log(e)
+            if(!doc) {
                 let user = new User({
                     ip: req.headers['x-real-ip']
                 })
-                user.save(function(err){
-                    console.log(timeStamp, "Объект сохранен:", user.ip);
+                user.save(function(){
+                    console.log(timeStamp, "IP address saved:", req.headers['x-real-ip']);
                 });
+            } else {
+                console.log(timeStamp, "IP address found:", doc.ip);
             }
-        proxy.web(req, res, { target: mobileBack });
+            proxy.web(req, res, { target: mobileBack }, function(e) {
+                console.log(e)
+            });
         });
     }
 
     var addrUrl = '\/' + mobileContext +'\/rest\/addresses\/';
     if (addrUrl.includes(req.url)) {
         console.log(timeStamp, '-', req.headers['x-real-ip'], '-', req.url)
-        User.findOne({ip: req.headers['x-real-ip']}, function (err, doc) {
+        User.findOne({ ip: req.headers['x-real-ip'] }, function (err, doc) {
             if (err) return console.log(err);
-            try {
-                let user = doc.ip
-                console.log(timeStamp, "Объект найден:", user);
-            } catch (e) {
-                console.log(e)
+            if(!doc) {
                 let user = new User({
                     ip: req.headers['x-real-ip']
                 })
-                user.save(function (err) {
-                    console.log(timeStamp, "Объект сохранен:", user.ip);
+                user.save(function () {
+                    console.log(timeStamp, "IP address saved:", req.headers['x-real-ip']);
                 });
+            } else {
+                console.log(timeStamp, "IP address found:", doc.ip);
             }
-            proxy.web(req, res, {target: mobileBack});
+            proxy.web(req, res, { target: mobileBack }, function(e) {
+                console.log(e)
+            });
         });
     }
 
@@ -124,7 +124,7 @@ var server = http.createServer(function(req, res) {
 
     if ( req.url === '\/healthcheck\/' ){
         res.writeHead(200);
-        res.write(JSON.stringify({health: 'ok'}));
+        res.write(JSON.stringify({ health: 'ok' }));
         res.end();
     }
 
