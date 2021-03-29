@@ -10,8 +10,8 @@ const Phone = mongoose.model('Phone', phoneScheme);
 
 // Setting variables
 mongoAddr = process.env.MONGO_ADDR || 'localhost'
-//mongoDBS = process.env.MONGO_DBS || process.env.MOBILE_CONTEXT
-mongoDBS = process.env.MONGO_DBS || 'mobile'
+mongoDBS = process.env.MONGO_DBS || process.env.MOBILE_CONTEXT
+//mongoDBS = process.env.MONGO_DBS || 'mobile'
 
 // Setting instance parameters
 const mongoUri = "mongodb://" + mongoAddr + "/" + mongoDBS;
@@ -34,7 +34,7 @@ mongoose.connect(mongoUri, options);
 
 module.exports = {
 
-    getphonerecords: async function (phoneNumber) {
+    getall: async function (phoneNumber) {
         let result = [];
 
         result = await Phone.find( { 'phoneNumber' : phoneNumber }, function (err, doc){
@@ -44,23 +44,34 @@ module.exports = {
         return result;
     },
 
+    get24hr: async function (phoneNumber, period24Hr) {
+        let result = [];
+
+        result = await Phone.find( { 'phoneNumber' : phoneNumber }, function (err, doc){
+            if(err) return console.log(err);
+        }).where('timeStamp').gt(period24Hr).sort({ 'timeStamp' : -1 }).lean();
+
+        return result;
+    },
+
     storephonerecord: async function (phoneNumber, timeStamp) {
         let phone = new Phone({
             phoneNumber: phoneNumber,
             timeStamp: timeStamp
         })
-        await phone.save(function (err) {
+        let result = await phone.save(function (err, doc) {
             if(err) return console.log(err);
             console.log('Saved phone number:', phoneNumber);
         });
+        console.log(result)
 
     },
 
-    deletephonerecords: async function (phoneNumber) {
+    deletephonerecords: async function (phoneNumber, period24Hr) {
         await Phone.deleteMany( { 'phoneNumber' : phoneNumber }, function (err){
             if(err) return console.log(err);
             console.log('Deleted phone number:', phoneNumber);
-        })
+        }).where('timeStamp').lt(period24Hr)
     }
 
 }

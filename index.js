@@ -1,7 +1,7 @@
 const http = require('http'),
     httpProxy = require('http-proxy');
 
-const {getallphonerecords} = require('./functions/methods.js');
+const {get24hrphonerecords} = require('./functions/methods.js');
 const {storerecord} = require('./functions/methods.js');
 const {cleanphonerecords} = require('./functions/methods.js');
 
@@ -26,19 +26,21 @@ const server = http.createServer(async function(req, res) {
         let arrayOfUrlParts = req.url.split("/");
         let phoneNumber = arrayOfUrlParts[4];
 
-        let phoneRecords = await getallphonerecords(phoneNumber);
+        let phone24HrRecords = await get24hrphonerecords(phoneNumber, timeStamp);
+
+        console.log('24Hr:', phone24HrRecords.length, phone24HrRecords)
 
         switch (true) {
-            case phoneRecords.length === 0:
+            case phone24HrRecords.length === 0:
                 await storerecord(phoneNumber, timeStamp);
                 proxy.web(req, res, { target: mobileBack }, function(err) {
                     console.log(err);
                 });
                 break;
 
-            case phoneRecords.length > 0 && phoneRecords.length < 10:
-                if ((timeStamp - phoneRecords[0].timeStamp) < smsAllowInterval*1000*60) {
-                    let period = timeStamp - phoneRecords[0].timeStamp;
+            case phone24HrRecords.length > 0 && phone24HrRecords.length < 10:
+                if ((timeStamp - phone24HrRecords[0].timeStamp) < smsAllowInterval*1000*60) {
+                    let period = timeStamp - phone24HrRecords[0].timeStamp;
                     console.log(timeStamp, "Too frequently request:", period, "msec. Phone number:", phoneNumber);
                     res.writeHead(503);
                     res.end();
@@ -50,21 +52,21 @@ const server = http.createServer(async function(req, res) {
                 }
                 break;
 
-            case phoneRecords.length >= 10:
-                if ((timeStamp - phoneRecords[0].timeStamp) < smsAllowInterval*1000*60*60*24) {
-                    let period = (timeStamp - phoneRecords[0].timeStamp)/1000/60/60;
-                    console.log(timeStamp, "More than 10 requests past 24hr:", period, "hr. Phone number:", phoneNumber);
+            case phone24HrRecords.length >= 10:
+                if ((timeStamp - phone24HrRecords[0].timeStamp) < smsAllowInterval*1000*60*60*24) {
+                    let timeInMessage = (timeStamp - phone24HrRecords[0].timeStamp) / 1000 / 60 / 60;
+                    console.log(timeStamp, "More than 10 requests past 24hr:", timeInMessage, "hr. Phone number:", phoneNumber);
                     res.writeHead(503);
                     res.end();
-                } else {
-                    await cleanphonerecords(phoneNumber);
-                    await storerecord(phoneNumber, timeStamp);
+                }
                     proxy.web(req, res, { target: mobileBack }, function(err) {
                         console.log(err);
                     });
-                }
                 break;
         }
+
+        cleanphonerecords(phoneNumber, timeStamp);
+
    }
 
     if ( req.url === '\/healthcheck\/' ){
