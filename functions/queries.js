@@ -4,14 +4,14 @@ const Schema = mongoose.Schema;
 
 const phoneScheme = new Schema({
     phoneNumber: String,
-    timeStamp: Number
+    timeStamp: Number,
+    requestDate: String
 });
 const Phone = mongoose.model('Phone', phoneScheme);
 
 // Setting variables
 mongoAddr = process.env.MONGO_ADDR || 'localhost'
-mongoDBS = process.env.MONGO_DBS || process.env.MOBILE_CONTEXT
-//mongoDBS = process.env.MONGO_DBS || 'mobile'
+mongoDBS = process.env.MONGO_DBS || 'mobile'
 
 // Setting instance parameters
 const mongoUri = "mongodb://" + mongoAddr + "/" + mongoDBS;
@@ -34,18 +34,9 @@ mongoose.connect(mongoUri, options);
 
 module.exports = {
 
-    getall: async function (phoneNumber) {
+    get24hrphonerecords: async function (phoneNumber, timeStamp) {
         let result = [];
-
-        result = await Phone.find( { 'phoneNumber' : phoneNumber }, function (err, doc){
-            if(err) return console.log(err);
-        }).sort({ 'timeStamp' : -1 }).lean();
-
-        return result;
-    },
-
-    get24hr: async function (phoneNumber, period24Hr) {
-        let result = [];
+        let period24Hr = timeStamp - 1000*60*60*24;
 
         result = await Phone.find( { 'phoneNumber' : phoneNumber }, function (err, doc){
             if(err) return console.log(err);
@@ -54,24 +45,25 @@ module.exports = {
         return result;
     },
 
-    storephonerecord: async function (phoneNumber, timeStamp) {
+    storephonerecord: async function (phoneNumber, timeStamp, currentDate) {
         let phone = new Phone({
             phoneNumber: phoneNumber,
-            timeStamp: timeStamp
-        })
-        let result = await phone.save(function (err, doc) {
-            if(err) return console.log(err);
-            console.log('Saved phone number:', phoneNumber);
+            timeStamp: timeStamp,
+            requestDate: currentDate
         });
-        console.log(result)
-
+        phone.save(function (err) {
+            if(err) return console.log(err);
+            console.log(currentDate, '- Saved phone number:', phoneNumber);
+        });
     },
 
-    deletephonerecords: async function (phoneNumber, period24Hr) {
-        await Phone.deleteMany( { 'phoneNumber' : phoneNumber }, function (err){
+    deletephonerecords: async function (phoneNumber, timeStamp, currentDate) {
+        let period24Hr = timeStamp - 1000*60*60*24;
+
+        Phone.deleteMany( { 'phoneNumber' : phoneNumber }, function (err, result){
             if(err) return console.log(err);
-            console.log('Deleted phone number:', phoneNumber);
-        }).where('timeStamp').lt(period24Hr)
+            else console.log(currentDate, '- Deleted', result.deletedCount, 'entries of phone number:', phoneNumber);
+        }).where('timeStamp').lt(period24Hr);
     }
 
 }

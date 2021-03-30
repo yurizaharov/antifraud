@@ -1,9 +1,9 @@
 const http = require('http'),
     httpProxy = require('http-proxy');
 
-const {get24hrphonerecords} = require('./functions/methods.js');
-const {storerecord} = require('./functions/methods.js');
-const {cleanphonerecords} = require('./functions/methods.js');
+const {get24hrphonerecords} = require('./functions/queries.js');
+const {storephonerecord} = require('./functions/queries.js')
+const {deletephonerecords} = require('./functions/queries.js')
 
 const proxy = httpProxy.createProxyServer({});
 
@@ -28,11 +28,11 @@ const server = http.createServer(async function(req, res) {
 
         let phone24HrRecords = await get24hrphonerecords(phoneNumber, timeStamp);
 
-        console.log('24Hr:', phone24HrRecords.length, phone24HrRecords)
+        console.log(currentDate, '- Found', phone24HrRecords.length, 'entries last 24Hr of phone number:', phoneNumber)
 
         switch (true) {
             case phone24HrRecords.length === 0:
-                await storerecord(phoneNumber, timeStamp);
+                storephonerecord(phoneNumber, timeStamp, currentDate);
                 proxy.web(req, res, { target: mobileBack }, function(err) {
                     console.log(err);
                 });
@@ -41,11 +41,11 @@ const server = http.createServer(async function(req, res) {
             case phone24HrRecords.length > 0 && phone24HrRecords.length < 10:
                 if ((timeStamp - phone24HrRecords[0].timeStamp) < smsAllowInterval*1000*60) {
                     let period = timeStamp - phone24HrRecords[0].timeStamp;
-                    console.log(timeStamp, "Too frequently request:", period, "msec. Phone number:", phoneNumber);
+                    console.log(currentDate, '- Too frequently request:', period, 'msec. Phone number:', phoneNumber);
                     res.writeHead(503);
                     res.end();
                 } else {
-                    await storerecord(phoneNumber, timeStamp);
+                    storephonerecord(phoneNumber, timeStamp, currentDate);
                     proxy.web(req, res, { target: mobileBack }, function(err) {
                         console.log(err);
                     });
@@ -53,19 +53,14 @@ const server = http.createServer(async function(req, res) {
                 break;
 
             case phone24HrRecords.length >= 10:
-                if ((timeStamp - phone24HrRecords[0].timeStamp) < smsAllowInterval*1000*60*60*24) {
-                    let timeInMessage = (timeStamp - phone24HrRecords[0].timeStamp) / 1000 / 60 / 60;
-                    console.log(timeStamp, "More than 10 requests past 24hr:", timeInMessage, "hr. Phone number:", phoneNumber);
-                    res.writeHead(503);
-                    res.end();
-                }
-                    proxy.web(req, res, { target: mobileBack }, function(err) {
-                        console.log(err);
-                    });
+                let timeInMessage = 24 - (timeStamp - phone24HrRecords[9].timeStamp)/1000/60/60;
+                console.log(currentDate, "- More than 10 requests past 24hr. Wait", timeInMessage.toFixed(2), "hr. Phone number:", phoneNumber);
+                res.writeHead(503);
+                res.end();
                 break;
         }
 
-        cleanphonerecords(phoneNumber, timeStamp);
+        deletephonerecords(phoneNumber, timeStamp, currentDate);
 
    }
 
