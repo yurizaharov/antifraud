@@ -45,7 +45,7 @@ module.exports = {
         return result;
     },
 
-    storephonerecord: async function (phoneNumber, timeStamp, currentDate) {
+    storephonerecord: function (phoneNumber, timeStamp, currentDate) {
         let phone = new Phone({
             phoneNumber: phoneNumber,
             timeStamp: timeStamp,
@@ -57,7 +57,7 @@ module.exports = {
         });
     },
 
-    deletephonerecords: async function (phoneNumber, timeStamp, currentDate) {
+    deletephonerecords: function (phoneNumber, timeStamp, currentDate) {
         let period24Hr = timeStamp - 1000*60*60*24;
 
         Phone.deleteMany( { 'phoneNumber' : phoneNumber }, function (err, result){
