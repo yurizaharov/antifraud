@@ -34,18 +34,18 @@ mongoose.connect(mongoUri, options);
 
 module.exports = {
 
-    get24hrphonerecords: async function (phoneNumber, timeStamp) {
+    getPhoneRecords: async function (phoneNumber, timeStamp, periodHrs) {
         let result = [];
-        let period24Hr = timeStamp - 1000*60*60*24;
+        let period = timeStamp - 1000*60*60*periodHrs;
 
         result = await Phone.find( { 'phoneNumber' : phoneNumber }, function (err, doc){
             if(err) return console.log(err);
-        }).where('timeStamp').gt(period24Hr).sort({ 'timeStamp' : -1 }).lean();
+        }).where('timeStamp').gt(period).sort({ 'timeStamp' : -1 }).lean();
 
         return result;
     },
 
-    storephonerecord: function (phoneNumber, timeStamp, currentDate) {
+    storePhoneRecord: function (phoneNumber, timeStamp, currentDate) {
         let phone = new Phone({
             phoneNumber: phoneNumber,
             timeStamp: timeStamp,
@@ -57,13 +57,13 @@ module.exports = {
         });
     },
 
-    deletephonerecords: function (phoneNumber, timeStamp, currentDate) {
-        let period24Hr = timeStamp - 1000*60*60*24;
+    deletePhoneRecords: function (phoneNumber, timeStamp, currentDate, periodHrs) {
+        let period = timeStamp - 1000*60*60*periodHrs;
 
         Phone.deleteMany( { 'phoneNumber' : phoneNumber }, function (err, result){
             if(err) return console.log(err);
             else console.log(currentDate, '- Deleted', result.deletedCount, 'entries of phone number:', phoneNumber);
-        }).where('timeStamp').lt(period24Hr);
+        }).where('timeStamp').lt(period);
     }
 
 }

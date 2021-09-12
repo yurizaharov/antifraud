@@ -5,11 +5,20 @@ const query = require('./functions/queries')
 const proxy = httpProxy.createProxyServer({});
 
 // Setting instance parameters
+// Mobile context (mobile-cppk for example)
 const mobileContext = process.env.MOBILE_CONTEXT || 'mobile' ;
 console.log("Mobile context of this instance is:", mobileContext);
+// Interval in minutes for each phone number
 const smsAllowInterval = process.env.SMS_ALLOW_INTERVAL || '1';
 console.log("Interval between sending messages is set to:", smsAllowInterval, "min");
+// MobileBack address
 const mobileBack = process.env.MOBILE_BACK || 'http://192.168.4.138:8880/'
+console.log("Mobileback for this instance  is:", mobileBack);
+// Period in hours of allowed sms
+const periodHrs = process.env.MOBILE_BACK || '24'
+console.log("Mobileback for this instance  is:", mobileBack);
+// Number of allowed sms per period
+const numberSMS = process.env.MOBILE_BACK || '10'
 console.log("Mobileback for this instance  is:", mobileBack);
 
 
@@ -23,41 +32,41 @@ const server = http.createServer(async function(req, res) {
         let arrayOfUrlParts = req.url.split("/");
         let phoneNumber = arrayOfUrlParts[4];
 
-        let phone24HrRecords = await query.get24hrphonerecords(phoneNumber, timeStamp);
+        let phonePeriodHrsRecords = await query.getPhoneRecords(phoneNumber, timeStamp, periodHrs);
 
-        console.log(currentDate, '- Found', phone24HrRecords.length, 'entries last 24Hr of phone number:', phoneNumber)
+        console.log(currentDate, '- Found', phonePeriodHrsRecords.length, 'entries last', periodHrs,'hours of phone number:', phoneNumber)
 
         switch (true) {
-            case phone24HrRecords.length === 0:
-                query.storephonerecord(phoneNumber, timeStamp, currentDate);
+            case phonePeriodHrsRecords.length === 0:
+                query.storePhoneRecord(phoneNumber, timeStamp, currentDate);
                 proxy.web(req, res, { target: mobileBack }, function(err) {
                     console.log(err);
                 });
                 break;
 
-            case phone24HrRecords.length > 0 && phone24HrRecords.length < 10:
-                if ((timeStamp - phone24HrRecords[0].timeStamp) < smsAllowInterval*1000*60) {
-                    let period = timeStamp - phone24HrRecords[0].timeStamp;
+            case phonePeriodHrsRecords.length > 0 && phonePeriodHrsRecords.length < numberSMS:
+                if ((timeStamp - phonePeriodHrsRecords[0].timeStamp) < smsAllowInterval*1000*60) {
+                    let period = timeStamp - phonePeriodHrsRecords[0].timeStamp;
                     console.log(currentDate, '- Too frequently request:', period, 'msec. Phone number:', phoneNumber);
                     res.writeHead(403);
                     res.end();
                 } else {
-                    query.storephonerecord(phoneNumber, timeStamp, currentDate);
+                    query.storePhoneRecord(phoneNumber, timeStamp, currentDate);
                     proxy.web(req, res, { target: mobileBack }, function(err) {
                         console.log(err);
                     });
                 }
                 break;
 
-            case phone24HrRecords.length >= 10:
-                let timeInMessage = 24 - (timeStamp - phone24HrRecords[9].timeStamp)/1000/60/60;
-                console.log(currentDate, "- More than 10 requests past 24hr. Wait", timeInMessage.toFixed(2), "hr. Phone number:", phoneNumber);
+            case phonePeriodHrsRecords.length >= numberSMS:
+                let timeInMessage = periodHrs - (timeStamp - phonePeriodHrsRecords[9].timeStamp)/1000/60/60;
+                console.log(currentDate, '- More than', numberSMS, 'requests past', periodHrs,'hours. Wait', timeInMessage.toFixed(2), 'hr. Phone number:', phoneNumber);
                 res.writeHead(403);
                 res.end();
                 break;
         }
 
-        query.deletephonerecords(phoneNumber, timeStamp, currentDate);
+        query.deletePhoneRecords(phoneNumber, timeStamp, currentDate, periodHrs);
 
    }
 
