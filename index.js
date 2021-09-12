@@ -16,10 +16,10 @@ const mobileBack = process.env.MOBILE_BACK || 'http://192.168.4.138:8880/'
 console.log("Mobileback for this instance  is:", mobileBack);
 // Period in hours of allowed sms
 const periodHrs = process.env.PERIOD_HRS || '24'
-console.log("Mobileback for this instance  is:", mobileBack);
+console.log("Mobileback for this instance  is:", periodHrs);
 // Number of allowed sms per period
 const numberSMS = process.env.NUMBER_SMS || '10'
-console.log("Mobileback for this instance  is:", mobileBack);
+console.log("Mobileback for this instance  is:", numberSMS);
 
 
 const server = http.createServer(async function(req, res) {
